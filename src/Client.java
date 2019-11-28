@@ -16,6 +16,8 @@ public class Client implements Runnable{
             System.out.println("please input your choice");
             System.out.println("1. upload");
             System.out.println("2. download");
+            System.out.println("3.change host port");
+            System.out.println("4.exit");
             Scanner in = new Scanner(System.in);
             String filename;
             int hash;
@@ -26,10 +28,20 @@ public class Client implements Runnable{
                 case 1:
                     System.out.println("please input filename");
                      filename= in.nextLine();
+                     //每个文件根据哈希值对应一台主机
                      hash = filename.hashCode() % 8;
-                     port = getPort(Host.nextPort, hash);
+                     //找到那台主机对应的端口号
+                    if(hash==Host.id)//本机
+                        port = Host.port;
+                    else
+                        port = getPort(Host.nextPort, hash);
+                    if(port==-1){
+                        System.out.println("cannot find that host");
+                        break;
+                    }
                     System.out.println(port);
                     try {
+                        //创建套接字，准备把文件传到对应主机上
                         Socket socket = new Socket(InetAddress.getLocalHost(), port);
                         File file = new File(filepath + "\\" + filename + ".txt");
                         System.out.println(file.getAbsolutePath());
@@ -42,6 +54,10 @@ public class Client implements Runnable{
                     System.out.println("plaese input the filename you want");
                     filename = in.nextLine();
                     hash = filename.hashCode()%8;
+                    if(hash==Host.id){
+                        System.out.println("this file cannot be in other hosts");
+                        break;
+                    }
                     port = getPort(Host.nextPort,hash);
                     try {
                         Socket socket = new Socket(InetAddress.getLocalHost(),port);
@@ -50,7 +66,23 @@ public class Client implements Runnable{
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-
+                case 3:
+                    System.out.println("input the new port");
+                    int newPort = Integer.parseInt(in.nextLine());
+                    Host.port = newPort;
+                    if(Host.id!=0)
+                        port = getPort(Host.nextPort,Host.id-1);
+                    else
+                        port = getPort(Host.nextPort,7);
+                    try {
+                        Socket socket = new Socket(InetAddress.getLocalHost(),port);
+                        changePort(socket, port);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                case 4:
+                    return;
 
             }
         }
@@ -113,7 +145,7 @@ public class Client implements Runnable{
                 dis.close();
                 dos.close();
             } catch (FileNotFoundException e) {
-                e.printStackTrace();
+                System.out.println("the file does not exist.");
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -148,5 +180,20 @@ public class Client implements Runnable{
         }
     }
 
+    public void changePort(Socket socket,int port){
+
+        try {
+            OutputStream outputStream = socket.getOutputStream();
+            String request = "change"+port;
+            outputStream.write(request.getBytes("UTF-8"));
+            InputStream inputStream = socket.getInputStream();
+            byte[] bytes = new byte[1024];
+            int len = inputStream.read(bytes);
+            String response = new String(bytes,0,len,"UTF-8");
+            System.out.println(response);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 }

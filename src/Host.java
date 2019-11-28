@@ -17,8 +17,10 @@ public class Host {
         Scanner in = new Scanner(System.in);
         id = Integer.parseInt(in.nextLine());
         try {
+            //为每一台主机创建一个serversocket
             serverSocket = new ServerSocket(6000+id);
             port = 6000+id;
+            //每台主机只知道下一台主机的端口号
             if(id==7)
                 nextPort = 6000;
             else
@@ -26,6 +28,7 @@ public class Host {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        //每台主机开启两个线程，一个客户端，一个服务器端
         new Thread(new Client(id)).start();
         new Thread(new Server(serverSocket,id)).start();
     }

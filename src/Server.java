@@ -27,28 +27,33 @@ public class Server implements Runnable {
                         if (Host.id == want) {
                             String response = String.valueOf(Host.port);
                             outputStream.write(response.getBytes("UTF-8"));
-                            inputStream.close();
-                            outputStream.close();
                         } else {
                             int get = query(want);
                             String response = String.valueOf(get);
                             outputStream.write(response.getBytes("UTF-8"));
-                            inputStream.close();
-                            outputStream.close();
                         }
+                    inputStream.close();
+                    outputStream.close();
                 }
                 else if(firstLine.substring(0,6).equals("upload")){
                     int index = firstLine.indexOf("*");
                     System.out.println("index"+index);
                     receieveFile(filepath+"\\"+firstLine.substring(6,index)+".txt",socket);
+
                 }
                 else if(firstLine.substring(0,8).equals("download")){
                     String filename = firstLine.substring(8);
                     File file = new File(filepath+"\\"+filename);
                     sendFile(file,socket);
-
                 }
-
+                else if(firstLine.substring(0,6).equals("change")){
+                    String nextport = firstLine.substring(7);
+                    System.out.println("next"+nextport);
+                    Host.nextPort = Integer.parseInt(nextport);
+                    OutputStream outputStream1 = socket.getOutputStream();
+                    outputStream1.write("change port successfully".getBytes("UTF-8"));
+                    outputStream1.close();
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
