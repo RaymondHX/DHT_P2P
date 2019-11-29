@@ -4,6 +4,7 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class Client implements Runnable{
+    //这台主机的文件存储路径
     String filepath;
 
     Client(int id){
@@ -39,12 +40,10 @@ public class Client implements Runnable{
                         System.out.println("cannot find that host");
                         break;
                     }
-                    System.out.println(port);
                     try {
                         //创建套接字，准备把文件传到对应主机上
                         Socket socket = new Socket(InetAddress.getLocalHost(), port);
                         File file = new File(filepath + "\\" + filename + ".txt");
-                        System.out.println(file.getAbsolutePath());
                         uploadFile(socket, file, filename);
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -55,26 +54,32 @@ public class Client implements Runnable{
                     filename = in.nextLine();
                     hash = filename.hashCode()%8;
                     if(hash==Host.id){
+                        //这个文件就应该对应本机，不需要上传
                         System.out.println("this file cannot be in other hosts");
                         break;
                     }
+                    //找到那台主机对应的端口号
                     port = getPort(Host.nextPort,hash);
                     try {
+                        //创建套接字从那台主机下载文件。
                         Socket socket = new Socket(InetAddress.getLocalHost(),port);
                         filepath = filepath+"\\";
                         downloadFile(socket, filepath,filename);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
+                    break;
                 case 3:
                     System.out.println("input the new port");
                     int newPort = Integer.parseInt(in.nextLine());
                     Host.port = newPort;
+                    //本机更改端口后，还有一台主机需要更改next，找到这台主机
                     if(Host.id!=0)
                         port = getPort(Host.nextPort,Host.id-1);
                     else
                         port = getPort(Host.nextPort,7);
                     try {
+                        //建立套接字与这台主机通信，更改next
                         Socket socket = new Socket(InetAddress.getLocalHost(),port);
                         changePort(socket, port);
                     } catch (IOException e) {
@@ -90,9 +95,6 @@ public class Client implements Runnable{
 
 
     public synchronized int getPort(int nextPort,int hash){
-        System.out.println("host"+Host.id);
-        System.out.println("nextport"+nextPort);
-        System.out.println("want"+hash);
         try {
             Socket socket = new Socket(InetAddress.getLocalHost(),nextPort);
             OutputStream outputStream = socket.getOutputStream();
@@ -123,7 +125,8 @@ public class Client implements Runnable{
     public synchronized void uploadFile(Socket socket, File file,String filename){
 
             try {
-                System.out.println("文件大小：" + file.length() + "kb");
+                DataInputStream dis = new DataInputStream(new FileInputStream(file.getAbsolutePath()));
+                DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
                 StringBuilder sb = new StringBuilder("upload");
                 sb.append(filename);
                 for (int i = 0; i <1024-sb.toString().length() ; i++) {
@@ -131,8 +134,6 @@ public class Client implements Runnable{
                 }
                 String fill = sb.toString();
                 socket.getOutputStream().write(fill.getBytes("UTF-8"));
-                DataInputStream dis = new DataInputStream(new FileInputStream(file.getAbsolutePath()));
-                DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
                 byte[] buf = new byte[1024 * 9];
                 int len = 0;
                 while ((len = dis.read(buf)) != -1) {
@@ -140,12 +141,15 @@ public class Client implements Runnable{
 
                 }
                 dos.flush();
-                System.out.println("文件上传结束，，，，");
-
+                System.out.println("file upload end，，，，");
+                System.out.println("\n");
+                System.out.println("\n");
                 dis.close();
                 dos.close();
             } catch (FileNotFoundException e) {
                 System.out.println("the file does not exist.");
+                System.out.println("\n");
+                System.out.println("\n");
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -158,22 +162,38 @@ public class Client implements Runnable{
         try {
             String request = "download"+filename+".txt";
             socket.getOutputStream().write(request.getBytes("UTF-8"));
-            System.out.println("接收到服务器端连接，，，，");
+            System.out.println("receive connection with server，，，，");
             filepath = filepath+"\\"+filename+".txt";
-            DataInputStream dis = new DataInputStream(socket.getInputStream());
-            DataOutputStream dos = new DataOutputStream(new FileOutputStream(filepath));
-
-            byte[] buf = new byte[1027 * 9];
+            byte[] buf = new byte[1024];
             int len = 0;
-
-            while ((len = dis.read(buf)) != -1) {
-                dos.write(buf, 0, len);
+            InputStream inputStream = socket.getInputStream();
+            len = inputStream.read(buf);
+            String firstLine = new String(buf,0,len,"UTF-8");
+            if(firstLine.equals("filenotexist")){
+                System.out.println("file not exist");
+                System.out.println("\n");
+                System.out.println("\n");
+                return;
             }
-            dos.flush();
 
-            System.out.println("文件下载结束，，，，");
-            dis.close();
-            dos.close();
+            else{
+                DataInputStream dis = new DataInputStream(inputStream);
+                DataOutputStream dos = new DataOutputStream(new FileOutputStream(filepath));
+
+                while ((len = dis.read(buf)) != -1) {
+                    dos.write(buf, 0, len);
+                }
+                dos.flush();
+                System.out.println("file download end，，，，");
+                System.out.println("\n");
+                System.out.println("\n");
+                dis.close();
+                dos.close();
+            }
+
+
+
+
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -191,6 +211,8 @@ public class Client implements Runnable{
             int len = inputStream.read(bytes);
             String response = new String(bytes,0,len,"UTF-8");
             System.out.println(response);
+            System.out.println("\n");
+            System.out.println("\n");
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -15,13 +15,15 @@ public class Server implements Runnable {
     public void run() {
         while (true) {
             try {
+                //一直监听来自客户端套接字的请求，并通信
                 Socket socket = serverSocket.accept();
                 InputStream inputStream = socket.getInputStream();
                 OutputStream outputStream = socket.getOutputStream();
                 byte[] bytes = new byte[1024];
                 int len = inputStream.read(bytes);
+                //读取第一行，这一行里面会包含客户端相应的请求消息
                 String firstLine = new String(bytes,0,len,"UTF-8");
-                System.out.println("firstline"+firstLine);
+                //根据第一行的消息进行判断处理
                 if(firstLine.substring(0, 7).equals("request")){
                     int want = Integer.parseInt(firstLine.substring(7));
                         if (Host.id == want) {
@@ -37,7 +39,6 @@ public class Server implements Runnable {
                 }
                 else if(firstLine.substring(0,6).equals("upload")){
                     int index = firstLine.indexOf("*");
-                    System.out.println("index"+index);
                     receieveFile(filepath+"\\"+firstLine.substring(6,index)+".txt",socket);
 
                 }
@@ -48,7 +49,6 @@ public class Server implements Runnable {
                 }
                 else if(firstLine.substring(0,6).equals("change")){
                     String nextport = firstLine.substring(7);
-                    System.out.println("next"+nextport);
                     Host.nextPort = Integer.parseInt(nextport);
                     OutputStream outputStream1 = socket.getOutputStream();
                     outputStream1.write("change port successfully".getBytes("UTF-8"));
@@ -66,7 +66,7 @@ public class Server implements Runnable {
         try {
             Socket socket = new Socket(InetAddress.getLocalHost(), Host.nextPort);
             OutputStream outputStream = socket.getOutputStream();
-            String response = "request" + String.valueOf(port);
+            String response = "request" +port;
             outputStream.write(response.getBytes("UTF-8"));
             // 建立好连接后，从socket中获取输入流，并建立缓冲区进行读取
             InputStream inputStream = socket.getInputStream();
@@ -74,12 +74,12 @@ public class Server implements Runnable {
             int len;
             StringBuilder sb = new StringBuilder();
             while ((len = inputStream.read(bytes)) != -1) {
-                // 注意指定编码格式，发送方和接收方一定要统一，建议使用UTF-8
                 sb.append(new String(bytes, 0, len, "UTF-8"));
             }
             int want = Integer.parseInt(sb.toString());
             inputStream.close();
             outputStream.close();
+            socket.close();
             return want;
         } catch (IOException e) {
             e.printStackTrace();
@@ -91,7 +91,7 @@ public class Server implements Runnable {
     private synchronized void receieveFile(String filePath, Socket socket) {
 
             try {
-                System.out.println("接收到客户端的连接，，，，");
+                System.out.println("receive connection from client，，，，");
 
                 DataInputStream dis = new DataInputStream(socket.getInputStream());
                 DataOutputStream dos = new DataOutputStream(new FileOutputStream(filePath));
@@ -104,7 +104,7 @@ public class Server implements Runnable {
                 }
                 dos.flush();
 
-                System.out.println("文件接受结束，，，，");
+                System.out.println("receive file end，，，，");
                 dis.close();
                 dos.close();
 
@@ -114,24 +114,33 @@ public class Server implements Runnable {
 
     }
 
-    private synchronized void sendFile(File file,Socket socket){
+    private synchronized void sendFile(File file,Socket socket)  {
         try {
-            System.out.println("文件大小：" + file.length() + "kb");
             DataInputStream dis = new DataInputStream(new FileInputStream(file.getAbsolutePath()));
             DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-            byte[] buf = new byte[1024 * 9];
+            dos.write("fileisexist".getBytes("UTF-8"));
+            for (int i = 0; i < 1013; i++) {
+                dos.write("*".getBytes("UTF-8"));
+            }
+            byte[] buf = new byte[1024];
             int len = 0;
             while ((len = dis.read(buf)) != -1) {
                 dos.write(buf, 0, len);
 
             }
             dos.flush();
-            System.out.println("文件传输结束，，，，");
+            System.out.println("file send end，，，，");
 
             dis.close();
             dos.close();
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            System.out.println("file does not exist");
+            try {
+                socket.getOutputStream().write("filenotexist".getBytes("UTF-8"));
+                socket.getOutputStream().close();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }

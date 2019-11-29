@@ -7,9 +7,12 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Host {
+    //当前主机端口号
     public static int port;
     public static ServerSocket serverSocket;
+    //当前主机id
     public static int id;
+    //下一台主机端口号
     public static int nextPort;
     public static void main(String[] args) throws UnsupportedEncodingException {
         System.out.println("welcome! ");
